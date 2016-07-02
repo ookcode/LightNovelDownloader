@@ -10,6 +10,7 @@ import urllib.request
 import threading
 import re
 import json
+from bs4 import BeautifulSoup
 
 ROOT_PATH = os.path.dirname(os.path.realpath(sys.argv[0]))
 
@@ -28,35 +29,14 @@ class DMZJ:
 		return response.read().decode('utf-8')
 
 	def _analysis(self):
-		beginKeyOfTitle = '点此下载TXT</a></span>'
-		endKeyOfTitle = '</li>'
-		beginLenOfTitle = len(beginKeyOfTitle)
-		beginPosOfTitle = 0
-		while (True):
-			beginPosOfTitle = self.html.find(beginKeyOfTitle, beginPosOfTitle + beginLenOfTitle)
-			if beginPosOfTitle == -1 :
-				break
-			nextPos = self.html.find(beginKeyOfTitle, beginPosOfTitle + beginLenOfTitle)
-			if nextPos == -1:
-				nextPos = len(self.html)
-			content = self.html[beginPosOfTitle:nextPos]
-			endPos = self.html.find(endKeyOfTitle, beginPosOfTitle)
-			title = self.html[beginPosOfTitle + beginLenOfTitle: endPos]
+		soup = BeautifulSoup(self.html)
+		for chapter in soup.find_all(class_="download_rtx"):
+			title = list(chapter.find('li').strings)[1]
 			if not re.match("第\w*卷", title):
 				print(title,"pass")
 				continue
-			#获取下载链接
-			beginKeyOfUrl = 'href="'
-			endKeyOfUrl = '.txt'
-			endPosOfUrl = 0
-			beginLenOfUrl = len(beginKeyOfUrl)
-			endLenOfUrl = len(endKeyOfUrl)
-			endPosOfUrl = content.find(endKeyOfUrl)
-			if endPosOfUrl == -1 :
-				continue
-			beginPos = content.rfind(beginKeyOfUrl, 0 , endPosOfUrl)
-			url = content[beginPos + beginLenOfUrl: endPosOfUrl + endLenOfUrl]
-			print(title, url)
+			url = chapter.find(class_="download_boxbg").find('a')["href"]
+			print(title)
 			t = threading.Thread(target=self._download,args=(title,self.baseUrl + url))
 			self.downloadThreads.append(t)
 
